@@ -399,7 +399,7 @@ void kernel_init() {
     vga_set_color(VGA_WHITE | (VGA_BLACK << 4));
     
     // Exibe banner de boas-vindas
-    vga_set_color(VGA_LIGHT_CYAN | (VGA_BLACK << 4));
+    vga_set_color(VGA_LIGHT_MAGENTA | (VGA_BLACK << 4));
     vga_puts("=== Kernel-V - Sistema Operacional (GRUB) ===\n");
     vga_putchar('\n');
     
@@ -419,12 +419,22 @@ void kernel_init() {
     // Prompt do sistema
     vga_set_color(VGA_LIGHT_YELLOW | (VGA_BLACK << 4));
     vga_puts("kernel-v> ");
+    
+    // Indicador de que a inicialização terminou
+    vga_set_color(VGA_LIGHT_RED | (VGA_BLACK << 4));
+    vga_puts("INIT COMPLETE - SHELL STARTING...\n");
 }
 
 // Função para executar o shell
 void run_shell() {
     char key;
     char ch;
+    
+    // Indicador de que o shell iniciou
+    vga_set_color(VGA_LIGHT_RED | (VGA_BLACK << 4));
+    vga_puts("SHELL STARTED - WAITING FOR INPUT...\n");
+    vga_set_color(VGA_LIGHT_YELLOW | (VGA_BLACK << 4));
+    vga_puts("kernel-v> ");
     
     // Loop principal do shell - sistema fica estável aqui
     while (1) {
