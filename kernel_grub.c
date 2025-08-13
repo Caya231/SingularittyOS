@@ -518,34 +518,33 @@ void run_shell() {
             }
         }
         
-        // Pausa pequena para não sobrecarregar a CPU
-        // Mas não bloqueia o sistema
-        for (volatile int i = 0; i < 1000; i++) {}
-        
         // Indicador visual de que o sistema está funcionando
         static int frame_counter = 0;
         frame_counter++;
         
-        // Atualiza indicador a cada 1000 frames
-        if (frame_counter % 1000 == 0) {
+        // Atualiza indicador a cada 100 frames (mais frequente)
+        if (frame_counter % 100 == 0) {
             // Salva posição atual
             int old_x = vga_x;
             int old_y = vga_y;
             
             // Vai para canto superior direito
-            vga_x = VGA_WIDTH - 10;
+            vga_x = VGA_WIDTH - 15;
             vga_y = 0;
             
             // Mostra contador de frames
             vga_set_color(VGA_LIGHT_RED | (VGA_BLACK << 4));
             vga_puts("FRAME:");
-            vga_putint(frame_counter / 1000);
+            vga_putint(frame_counter / 100);
             
             // Restaura posição
             vga_x = old_x;
             vga_y = old_y;
             vga_set_color(vga_color);
         }
+        
+        // Pausa muito pequena para não travar
+        for (volatile int i = 0; i < 100; i++) {}
     }
 }
 
