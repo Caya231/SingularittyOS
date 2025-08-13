@@ -1,0 +1,57 @@
+# Makefile para o Sistema Operacional Kernel-V com GRUB
+CC = gcc
+LD = ld
+CFLAGS = -Wall -Wextra -std=c99 -O2 -fno-pie -fno-stack-protector -m32 -nostdlib -fno-builtin -fno-pic -mno-red-zone
+LDFLAGS = -m elf_i386 -T kernel_grub.ld
+
+# Arquivos
+KERNEL = kernel_grub.bin
+ISO_DIR = iso
+GRUB_CFG = grub.cfg
+
+# Regra padrão
+all: $(KERNEL)
+
+# Compilar o kernel
+kernel_grub.o: kernel_grub.c
+	$(CC) $(CFLAGS) -c kernel_grub.c -o kernel_grub.o
+
+# Linkar o kernel
+$(KERNEL): kernel_grub.o
+	$(LD) $(LDFLAGS) -o $(KERNEL) kernel_grub.o
+
+# Criar ISO bootável
+iso: $(KERNEL)
+	mkdir -p $(ISO_DIR)/boot/grub
+	cp $(KERNEL) $(ISO_DIR)/boot/
+	cp $(GRUB_CFG) $(ISO_DIR)/boot/grub/
+	grub-mkrescue -o kernel-v-grub.iso $(ISO_DIR)
+
+# Executar no QEMU
+run: $(KERNEL)
+	qemu-system-i386 -kernel $(KERNEL) -display gtk -no-reboot -no-shutdown
+
+# Executar no QEMU com ISO
+run-iso: iso
+	qemu-system-i386 -cdrom kernel-v-grub.iso
+
+# Limpar arquivos compilados
+clean:
+	rm -f *.o *.bin *.iso
+	rm -rf $(ISO_DIR)
+
+# Mostrar ajuda
+help:
+	@echo "Comandos disponíveis:"
+	@echo "  make        - Compilar o kernel GRUB"
+	@echo "  make iso    - Criar ISO bootável"
+	@echo "  make run    - Executar kernel diretamente no QEMU"
+	@echo "  make run-iso- Executar ISO no QEMU"
+	@echo "  make clean  - Limpar arquivos compilados"
+	@echo "  make help   - Mostrar esta ajuda"
+	@echo ""
+	@echo "Requisitos:"
+	@echo "  - GCC com suporte a 32-bit"
+	@echo "  - GRUB tools (grub-mkrescue)"
+
+.PHONY: all iso run run-iso clean help
