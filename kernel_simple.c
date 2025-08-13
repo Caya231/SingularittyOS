@@ -1,5 +1,25 @@
 #include <stdint.h>
 
+// Cabeçalho Multiboot para compatibilidade com QEMU
+#define MULTIBOOT_HEADER_MAGIC 0x1BADB002
+#define MULTIBOOT_HEADER_FLAGS 0x00000003
+#define MULTIBOOT_HEADER_CHECKSUM -(MULTIBOOT_HEADER_MAGIC + MULTIBOOT_HEADER_FLAGS)
+
+// Estrutura do cabeçalho Multiboot
+struct multiboot_header {
+    uint32_t magic;
+    uint32_t flags;
+    uint32_t checksum;
+} __attribute__((packed));
+
+// Cabeçalho Multiboot (deve estar no início do arquivo)
+__attribute__((section(".multiboot")))
+struct multiboot_header multiboot_header = {
+    MULTIBOOT_HEADER_MAGIC,
+    MULTIBOOT_HEADER_FLAGS,
+    MULTIBOOT_HEADER_CHECKSUM
+};
+
 // Definições do VGA
 #define VGA_WIDTH 80
 #define VGA_HEIGHT 25
