@@ -155,6 +155,8 @@ void kernel_main() {
     vga_set_color(VGA_LIGHT_YELLOW | (VGA_BLACK << 4));
     vga_puts("kernel> ");
     vga_set_color(vga_color);
+    // Cursor fica na frente do prompt
+    vga_x = 8; // "kernel> " tem 8 caracteres
     
     // Loop principal ultra-simples
     int frame_counter = 0;
@@ -212,6 +214,8 @@ void kernel_main() {
                 vga_set_color(VGA_LIGHT_YELLOW | (VGA_BLACK << 4));
                 vga_puts("kernel> ");
                 vga_set_color(vga_color);
+                // Cursor fica na frente do prompt
+                vga_x = 8; // "kernel> " tem 8 caracteres
             }
             else if (key == 0x0E) { // Backspace
                 if (vga_x > 0) {
