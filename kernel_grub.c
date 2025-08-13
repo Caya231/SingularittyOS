@@ -30,6 +30,13 @@
 #define VGA_WIDTH 80
 #define VGA_HEIGHT 25
 
+// Portas do teclado
+#define KEYBOARD_DATA_PORT 0x60
+#define KEYBOARD_STATUS_PORT 0x64
+
+// Tamanho máximo do buffer de comando
+#define MAX_COMMAND_LENGTH 256
+
 // Estrutura para informações do sistema
 typedef struct {
     char hostname[32];
@@ -44,6 +51,10 @@ static uint16_t* vga_buffer = (uint16_t*)VGA_BASE;
 static uint8_t vga_color = VGA_LIGHT_GREY | (VGA_BLACK << 4);
 static size_t vga_x = 0;
 static size_t vga_y = 0;
+static char command_buffer[MAX_COMMAND_LENGTH];
+static int command_pos = 0;
+static int cursor_x = 0;
+static int cursor_y = 0;
 
 // Header do Multiboot (deve estar no início do arquivo)
 __attribute__((section(".multiboot")))
@@ -65,6 +76,8 @@ void vga_clear() {
     }
     vga_x = 0;
     vga_y = 0;
+    cursor_x = 0;
+    cursor_y = 0;
 }
 
 // Função para definir cor
@@ -87,6 +100,8 @@ void vga_putchar(char c) {
             }
             vga_y = VGA_HEIGHT - 1;
         }
+        cursor_x = 0;
+        cursor_y = vga_y;
         return;
     }
     
@@ -102,6 +117,8 @@ void vga_putchar(char c) {
     const size_t index = vga_y * VGA_WIDTH + vga_x;
     vga_buffer[index] = (uint16_t)c | (uint16_t)vga_color << 8;
     vga_x++;
+    cursor_x = vga_x;
+    cursor_y = vga_y;
 }
 
 // Função para exibir string
@@ -194,6 +211,104 @@ void display_system_info(SystemInfo* info) {
     vga_putchar('\n');
 }
 
+// Função para ler byte de uma porta
+static inline uint8_t inb(uint16_t port) {
+    uint8_t ret;
+    __asm__ volatile("inb %1, %0" : "=a"(ret) : "Nd"(port));
+    return ret;
+}
+
+// Função para escrever byte em uma porta
+static inline void outb(uint16_t port, uint8_t val) {
+    __asm__ volatile("outb %0, %1" : : "a"(val), "Nd"(port));
+}
+
+// Função para ler tecla do teclado
+char read_keyboard() {
+    // Aguarda até que uma tecla esteja disponível
+    while (!(inb(KEYBOARD_STATUS_PORT) & 0x01));
+    
+    // Lê a tecla
+    return inb(KEYBOARD_DATA_PORT);
+}
+
+// Função para comparar strings
+int strcmp(const char* s1, const char* s2) {
+    while (*s1 && (*s1 == *s2)) {
+        s1++;
+        s2++;
+    }
+    return *(const unsigned char*)s1 - *(const unsigned char*)s2;
+}
+
+// Função para obter tamanho da string
+size_t strlen(const char* str) {
+    size_t len = 0;
+    while (str[len] != '\0') {
+        len++;
+    }
+    return len;
+}
+
+// Função para copiar string
+void strcpy(char* dest, const char* src) {
+    while (*src) {
+        *dest = *src;
+        dest++;
+        src++;
+    }
+    *dest = '\0';
+}
+
+// Função para processar comandos
+void process_command(const char* command) {
+    if (strcmp(command, "help") == 0) {
+        vga_puts("Comandos disponíveis:\n");
+        vga_puts("  help     - Mostra esta ajuda\n");
+        vga_puts("  clear    - Limpa a tela\n");
+        vga_puts("  info     - Mostra informações do sistema\n");
+        vga_puts("  date     - Mostra data/hora (simulado)\n");
+        vga_puts("  exit     - Reinicia o sistema\n");
+        vga_puts("  reboot   - Reinicia o sistema\n");
+    }
+    else if (strcmp(command, "clear") == 0) {
+        vga_clear();
+        vga_set_color(VGA_LIGHT_YELLOW | (VGA_BLACK << 4));
+        vga_puts("kernel-v> ");
+    }
+    else if (strcmp(command, "info") == 0) {
+        vga_putchar('\n');
+        SystemInfo sys_info;
+        get_system_info(&sys_info);
+        display_system_info(&sys_info);
+        vga_set_color(VGA_LIGHT_YELLOW | (VGA_BLACK << 4));
+        vga_puts("kernel-v> ");
+    }
+    else if (strcmp(command, "date") == 0) {
+        vga_puts("Data: 13/08/2025 - Hora: 04:00:00 (simulado)\n");
+        vga_set_color(VGA_LIGHT_YELLOW | (VGA_BLACK << 4));
+        vga_puts("kernel-v> ");
+    }
+    else if (strcmp(command, "exit") == 0 || strcmp(command, "reboot") == 0) {
+        vga_puts("Reiniciando sistema...\n");
+        // Reinicia o sistema
+        outb(0x64, 0xFE);
+    }
+    else if (strlen(command) > 0) {
+        vga_puts("Comando não encontrado: ");
+        vga_puts(command);
+        vga_puts("\nDigite 'help' para ver comandos disponíveis.\n");
+        vga_set_color(VGA_LIGHT_YELLOW | (VGA_BLACK << 4));
+        vga_puts("kernel-v> ");
+    }
+    else {
+        vga_set_color(VGA_LIGHT_YELLOW | (VGA_BLACK << 4));
+        vga_puts("kernel-v> ");
+    }
+}
+
+
+
 // Função para inicializar o sistema
 void kernel_init() {
     // Limpa a tela
@@ -216,7 +331,7 @@ void kernel_init() {
     
     // Exibe mensagem de sucesso
     vga_set_color(VGA_LIGHT_GREEN | (VGA_BLACK << 4));
-    vga_puts("Sistema operacional carregado com sucesso pelo GRUB!\n");
+    vga_puts("Sistema operacional carregado com sucesso!\n");
     vga_puts("Digite 'help' para comandos disponíveis.\n");
     vga_putchar('\n');
     
@@ -225,24 +340,69 @@ void kernel_init() {
     vga_puts("kernel-v> ");
 }
 
+// Função para executar o shell
+void run_shell() {
+    char key;
+    char ch;
+    
+    while (1) {
+        // Lê tecla do teclado
+        key = read_keyboard();
+        
+        // Processa tecla especial
+        if (key == 0xE0) {
+            key = read_keyboard(); // Lê código da tecla especial
+            continue;
+        }
+        
+        // Converte scancode para caractere
+        if (key >= 0x02 && key <= 0x0D) {
+            ch = "1234567890-="[key - 0x02];
+        }
+        else if (key >= 0x10 && key <= 0x1B) {
+            ch = "qwertyuiop[]"[key - 0x10];
+        }
+        else if (key >= 0x1E && key <= 0x28) {
+            ch = "asdfghjkl;'"[key - 0x1E];
+        }
+        else if (key >= 0x2C && key <= 0x35) {
+            ch = "zxcvbnm,./"[key - 0x2C];
+        }
+        else if (key == 0x39) {
+            ch = ' ';
+        }
+        else if (key == 0x1C) { // Enter
+            vga_putchar('\n');
+            command_buffer[command_pos] = '\0';
+            process_command(command_buffer);
+            command_pos = 0;
+            continue;
+        }
+        else if (key == 0x0E) { // Backspace
+            if (command_pos > 0) {
+                command_pos--;
+                vga_putchar('\b');
+                vga_putchar(' ');
+                vga_putchar('\b');
+            }
+            continue;
+        }
+        else {
+            continue; // Tecla não reconhecida
+        }
+        
+        // Adiciona caractere ao buffer e exibe na tela
+        if (command_pos < MAX_COMMAND_LENGTH - 1) {
+            command_buffer[command_pos++] = ch;
+            vga_putchar(ch);
+        }
+    }
+}
+
 // Função principal do kernel
 void kernel_main() {
     kernel_init();
     
-    // Sistema fica "travado" aqui mostrando as informações
-    // Loop infinito que mantém o kernel rodando sem reiniciar
-    
-    // Desabilita interrupções para evitar reinicializações
-    __asm__ volatile("cli");
-    
-    while (1) {
-        // Loop infinito simples
-        // O sistema fica parado na tela com as informações
-        // Não faz nada, apenas mantém o kernel ativo
-        
-        // Pequena pausa para não sobrecarregar a CPU
-        for (volatile int i = 0; i < 1000000; i++) {
-            // Loop vazio para pausa
-        }
-    }
+    // Inicializa o shell
+    run_shell();
 }
