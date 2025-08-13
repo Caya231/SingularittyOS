@@ -1,5 +1,8 @@
 #include <stdint.h>
 
+// Definição de NULL
+#define NULL ((void*)0)
+
 // Cabeçalho Multiboot para compatibilidade com QEMU
 #define MULTIBOOT_HEADER_MAGIC 0x1BADB002
 #define MULTIBOOT_HEADER_FLAGS 0x00000003
@@ -44,11 +47,23 @@ struct multiboot_header multiboot_header = {
 #define KEYBOARD_DATA_PORT 0x60
 #define KEYBOARD_STATUS_PORT 0x64
 
+// Estrutura para comandos
+#define MAX_COMMAND_LENGTH 256
+#define MAX_ARGS 16
+#define MAX_HISTORY 50
+
 // Buffer VGA
 volatile uint16_t* vga_buffer = (volatile uint16_t*)0xB8000;
 volatile int vga_x = 0;
 volatile int vga_y = 0;
 volatile uint8_t vga_color = VGA_WHITE | (VGA_BLACK << 4);
+
+// Variáveis globais
+char command_buffer[MAX_COMMAND_LENGTH];
+int command_pos = 0;
+char command_history[MAX_HISTORY][MAX_COMMAND_LENGTH];
+int history_pos = 0;
+int current_history = 0;
 
 // Funções VGA básicas
 void vga_clear() {
@@ -137,17 +152,6 @@ char read_keyboard() {
     return inb(KEYBOARD_DATA_PORT);
 }
 
-// Estrutura para comandos
-#define MAX_COMMAND_LENGTH 256
-#define MAX_ARGS 16
-#define MAX_HISTORY 50
-
-char command_buffer[MAX_COMMAND_LENGTH];
-int command_pos = 0;
-char command_history[MAX_HISTORY][MAX_COMMAND_LENGTH];
-int history_pos = 0;
-int current_history = 0;
-
 // Função para comparar strings
 int strcmp(const char* s1, const char* s2) {
     while (*s1 && (*s1 == *s2)) {
@@ -177,7 +181,7 @@ void strcpy(char* dest, const char* src) {
 }
 
 // Função para dividir comando em argumentos
-int parse_command(const char* command, char* args[]) {
+int parse_command(char* command, char* args[]) {
     int argc = 0;
     int i = 0;
     int start = 0;
@@ -202,7 +206,7 @@ int parse_command(const char* command, char* args[]) {
 }
 
 // Função para executar comandos
-void execute_command(const char* command) {
+void execute_command(char* command) {
     char* args[MAX_ARGS];
     int argc = parse_command(command, args);
     
@@ -236,9 +240,9 @@ void execute_command(const char* command) {
     }
     else if (strcmp(args[0], "ls") == 0) {
         vga_puts("Arquivos do sistema:\n");
-        vga_puts("  kernel_simple.bin\n");
-        vga_puts("  kernel_simple.c\n");
-        vga_puts("  Makefile_simple\n");
+        vga_puts("  kernel_bash.bin\n");
+        vga_puts("  kernel_bash.c\n");
+        vga_puts("  Makefile_bash\n");
         vga_puts("  README.md\n");
         vga_puts("  .git/\n");
     }
@@ -288,12 +292,12 @@ void kernel_main() {
     
     // Exibe banner
     vga_set_color(VGA_LIGHT_MAGENTA | (VGA_BLACK << 4));
-    vga_puts("=== KERNEL SIMPLES - TESTE DE TECLADO ===\n\n");
+    vga_puts("=== KERNEL-V BASH - TERMINAL FUNCIONAL ===\n\n");
     
     // Exibe instruções
     vga_set_color(VGA_LIGHT_CYAN | (VGA_BLACK << 4));
-    vga_puts("Terminal funcionando! Digite normalmente...\n");
-    vga_puts("Use Enter para nova linha, Backspace para apagar\n\n");
+    vga_puts("Terminal BASH funcionando! Digite comandos...\n");
+    vga_puts("Digite 'help' para ver comandos disponíveis\n\n");
     
     // Mostra prompt inicial
     vga_set_color(VGA_LIGHT_YELLOW | (VGA_BLACK << 4));
@@ -302,7 +306,7 @@ void kernel_main() {
     // Cursor fica na frente do prompt
     vga_x = 8; // "kernel> " tem 8 caracteres
     
-    // Loop principal ultra-simples
+    // Loop principal
     int frame_counter = 0;
     
     while (1) {
@@ -336,22 +340,37 @@ void kernel_main() {
             // Converte para caractere se possível
             if (key >= 0x02 && key <= 0x0D) {
                 char ch = "1234567890-="[key - 0x02];
-                vga_putchar(ch);
+                if (command_pos < MAX_COMMAND_LENGTH - 1) {
+                    command_buffer[command_pos++] = ch;
+                    vga_putchar(ch);
+                }
             }
             else if (key >= 0x10 && key <= 0x1B) {
                 char ch = "qwertyuiop[]"[key - 0x10];
-                vga_putchar(ch);
+                if (command_pos < MAX_COMMAND_LENGTH - 1) {
+                    command_buffer[command_pos++] = ch;
+                    vga_putchar(ch);
+                }
             }
             else if (key >= 0x1E && key <= 0x28) {
                 char ch = "asdfghjkl;'"[key - 0x1E];
-                vga_putchar(ch);
+                if (command_pos < MAX_COMMAND_LENGTH - 1) {
+                    command_buffer[command_pos++] = ch;
+                    vga_putchar(ch);
+                }
             }
             else if (key >= 0x2C && key <= 0x35) {
                 char ch = "zxcvbnm,./"[key - 0x2C];
-                vga_putchar(ch);
+                if (command_pos < MAX_COMMAND_LENGTH - 1) {
+                    command_buffer[command_pos++] = ch;
+                    vga_putchar(ch);
+                }
             }
             else if (key == 0x39) {
-                vga_putchar(' ');
+                if (command_pos < MAX_COMMAND_LENGTH - 1) {
+                    command_buffer[command_pos++] = ' ';
+                    vga_putchar(' ');
+                }
             }
             else if (key == 0x1C) { // Enter
                 vga_putchar('\n');
@@ -368,45 +387,75 @@ void kernel_main() {
                 vga_x = 8; // "kernel> " tem 8 caracteres
             }
             else if (key == 0x0E) { // Backspace
-                if (vga_x > 0) {
-                    vga_x--;
-                    vga_putchar('\b');
-                    vga_putchar(' ');
-                    vga_putchar('\b');
+                if (command_pos > 0) {
+                    command_pos--;
+                    if (vga_x > 0) {
+                        vga_x--;
+                        vga_putchar('\b');
+                        vga_putchar(' ');
+                        vga_putchar('\b');
+                    }
                 }
             }
             else if (key == 0x0F) { // Tab
-                vga_putchar('\t');
+                if (command_pos < MAX_COMMAND_LENGTH - 1) {
+                    command_buffer[command_pos++] = '\t';
+                    vga_putchar('\t');
+                }
             }
             else if (key == 0x1A) { // [
-                vga_putchar('[');
+                if (command_pos < MAX_COMMAND_LENGTH - 1) {
+                    command_buffer[command_pos++] = '[';
+                    vga_putchar('[');
+                }
             }
             else if (key == 0x1B) { // ]
-                vga_putchar(']');
+                if (command_pos < MAX_COMMAND_LENGTH - 1) {
+                    command_buffer[command_pos++] = ']';
+                    vga_putchar(']');
+                }
             }
             else if (key == 0x27) { // ;
-                vga_putchar(';');
+                if (command_pos < MAX_COMMAND_LENGTH - 1) {
+                    command_buffer[command_pos++] = ';';
+                    vga_putchar(';');
+                }
             }
             else if (key == 0x28) { // '
-                vga_putchar('\'');
+                if (command_pos < MAX_COMMAND_LENGTH - 1) {
+                    command_buffer[command_pos++] = '\'';
+                    vga_putchar('\'');
+                }
             }
             else if (key == 0x33) { // ,
-                vga_putchar(',');
+                if (command_pos < MAX_COMMAND_LENGTH - 1) {
+                    command_buffer[command_pos++] = ',';
+                    vga_putchar(',');
+                }
             }
             else if (key == 0x34) { // .
-                vga_putchar('.');
-            }
-            else if (key == 0x35) { // /
-                vga_putchar('/');
+                if (command_pos < MAX_COMMAND_LENGTH - 1) {
+                    command_buffer[command_pos++] = '.';
+                    vga_putchar('.');
+                }
             }
             else if (key == 0x0B) { // 0
-                vga_putchar('0');
+                if (command_pos < MAX_COMMAND_LENGTH - 1) {
+                    command_buffer[command_pos++] = '0';
+                    vga_putchar('0');
+                }
             }
             else if (key == 0x0C) { // -
-                vga_putchar('-');
+                if (command_pos < MAX_COMMAND_LENGTH - 1) {
+                    command_buffer[command_pos++] = '-';
+                    vga_putchar('-');
+                }
             }
             else if (key == 0x0D) { // =
-                vga_putchar('=');
+                if (command_pos < MAX_COMMAND_LENGTH - 1) {
+                    command_buffer[command_pos++] = '=';
+                    vga_putchar('=');
+                }
             }
         }
         
