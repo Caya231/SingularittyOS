@@ -29,11 +29,19 @@ iso: $(KERNEL)
 
 # Executar no QEMU
 run: $(KERNEL)
-	qemu-system-i386 -kernel $(KERNEL) -display gtk -no-reboot -no-shutdown -enable-kvm -m 128M
+	qemu-system-i386 -kernel $(KERNEL) -display gtk -no-reboot -no-shutdown -enable-kvm -m 128M -usb -device usb-kbd
 
 # Executar no QEMU com console (mais confiável para teclado)
 run-console: $(KERNEL)
-	qemu-system-i386 -kernel $(KERNEL) -nographic -no-reboot -no-shutdown -m 128M
+	qemu-system-i386 -kernel $(KERNEL) -nographic -no-reboot -no-shutdown -m 128M -usb -device usb-kbd
+
+# Executar no QEMU sem KVM (pode resolver problemas de teclado)
+run-simple: $(KERNEL)
+	qemu-system-i386 -kernel $(KERNEL) -display gtk -no-reboot -no-shutdown -m 128M
+
+# Executar no QEMU com debug de interrupções
+run-debug: $(KERNEL)
+	qemu-system-i386 -kernel $(KERNEL) -display gtk -no-reboot -no-shutdown -enable-kvm -m 128M -d int -D qemu.log
 
 # Executar no QEMU com ISO
 run-iso: iso
@@ -49,8 +57,10 @@ help:
 	@echo "Comandos disponíveis:"
 	@echo "  make        - Compilar o kernel GRUB"
 	@echo "  make iso    - Criar ISO bootável"
-	@echo "  make run    - Executar kernel no QEMU (GUI)"
-	@echo "  make run-console - Executar kernel no QEMU (console - mais confiável)"
+	@echo "  make run    - Executar kernel no QEMU (GUI + USB keyboard)"
+	@echo "  make run-console - Executar kernel no QEMU (console + USB keyboard)"
+	@echo "  make run-simple - Executar kernel no QEMU (GUI sem KVM - pode resolver teclado)"
+	@echo "  make run-debug - Executar kernel no QEMU (com debug de interrupções)"
 	@echo "  make run-iso- Executar ISO no QEMU"
 	@echo "  make clean  - Limpar arquivos compilados"
 	@echo "  make help   - Mostrar esta ajuda"

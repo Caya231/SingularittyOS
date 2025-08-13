@@ -571,6 +571,22 @@ void run_shell() {
                 vga_putchar(ch);
             }
         }
+        else {
+            // Se não há tecla, força uma verificação mais agressiva
+            // Tenta ler diretamente da porta do teclado
+            unsigned char status = inb(KEYBOARD_STATUS_PORT);
+            if (status & 0x01) {
+                // Há dados, força a leitura
+                key = inb(KEYBOARD_DATA_PORT);
+                
+                // Debug: mostra tecla forçada
+                vga_set_color(VGA_LIGHT_RED | (VGA_BLACK << 4));
+                vga_puts("FORCE[");
+                vga_putint(key);
+                vga_puts("]");
+                vga_set_color(vga_color);
+            }
+        }
         
         // Pausa mínima para não travar
         for (volatile int i = 0; i < 10; i++) {}
