@@ -29,7 +29,11 @@ iso: $(KERNEL)
 
 # Executar no QEMU
 run: $(KERNEL)
-	qemu-system-i386 -kernel $(KERNEL) -display gtk -no-reboot -no-shutdown
+	qemu-system-i386 -kernel $(KERNEL) -display gtk -no-reboot -no-shutdown -enable-kvm -m 128M
+
+# Executar no QEMU com console (mais confiável para teclado)
+run-console: $(KERNEL)
+	qemu-system-i386 -kernel $(KERNEL) -nographic -no-reboot -no-shutdown -m 128M
 
 # Executar no QEMU com ISO
 run-iso: iso
@@ -45,7 +49,8 @@ help:
 	@echo "Comandos disponíveis:"
 	@echo "  make        - Compilar o kernel GRUB"
 	@echo "  make iso    - Criar ISO bootável"
-	@echo "  make run    - Executar kernel diretamente no QEMU"
+	@echo "  make run    - Executar kernel no QEMU (GUI)"
+	@echo "  make run-console - Executar kernel no QEMU (console - mais confiável)"
 	@echo "  make run-iso- Executar ISO no QEMU"
 	@echo "  make clean  - Limpar arquivos compilados"
 	@echo "  make help   - Mostrar esta ajuda"

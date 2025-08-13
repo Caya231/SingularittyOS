@@ -283,6 +283,7 @@ void process_command(const char* command) {
         vga_puts("  date     - Mostra data/hora (simulado)\n");
         vga_puts("  test     - Testa o teclado\n");
         vga_puts("  debug    - Modo debug do teclado\n");
+        vga_puts("  qemu-test- Testa se QEMU captura input\n");
         vga_puts("  exit     - Reinicia o sistema\n");
         vga_puts("  reboot   - Reinicia o sistema\n");
     }
@@ -314,6 +315,7 @@ void process_command(const char* command) {
     else if (strcmp(command, "debug") == 0) {
         vga_puts("Modo debug ativado!\n");
         vga_puts("Aguardando teclas... (pressione ESC para sair)\n");
+        vga_puts("Se não aparecer nada, o QEMU não está capturando o teclado!\n");
         
         // Loop de debug
         while (1) {
@@ -332,6 +334,37 @@ void process_command(const char* command) {
             
             // Pausa para não sobrecarregar
             for (volatile int i = 0; i < 10000; i++) {}
+        }
+        
+        vga_set_color(VGA_LIGHT_YELLOW | (VGA_BLACK << 4));
+        vga_puts("kernel-v> ");
+    }
+    else if (strcmp(command, "qemu-test") == 0) {
+        vga_puts("Testando se o QEMU está capturando input...\n");
+        vga_puts("Pressione qualquer tecla por 10 segundos...\n");
+        
+        int timeout = 0;
+        while (timeout < 100) {
+            if (keyboard_available()) {
+                char test_key = inb(KEYBOARD_DATA_PORT);
+                vga_puts("Tecla detectada: [");
+                vga_putint(test_key);
+                vga_puts("] - QEMU funcionando!\n");
+                break;
+            }
+            
+            // Contador de timeout
+            if (timeout % 10 == 0) {
+                vga_puts(".");
+            }
+            
+            timeout++;
+            for (volatile int i = 0; i < 100000; i++) {}
+        }
+        
+        if (timeout >= 100) {
+            vga_puts("\nNENHUMA tecla detectada! QEMU não está capturando input!\n");
+            vga_puts("Tente usar: make run-console\n");
         }
         
         vga_set_color(VGA_LIGHT_YELLOW | (VGA_BLACK << 4));
