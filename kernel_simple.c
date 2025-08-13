@@ -148,8 +148,13 @@ void kernel_main() {
     
     // Exibe instruções
     vga_set_color(VGA_LIGHT_CYAN | (VGA_BLACK << 4));
-    vga_puts("Pressione qualquer tecla para testar...\n");
-    vga_puts("Pressione 'q' para sair\n\n");
+    vga_puts("Terminal funcionando! Digite normalmente...\n");
+    vga_puts("Use Enter para nova linha, Backspace para apagar\n\n");
+    
+    // Mostra prompt inicial
+    vga_set_color(VGA_LIGHT_YELLOW | (VGA_BLACK << 4));
+    vga_puts("kernel> ");
+    vga_set_color(vga_color);
     
     // Loop principal ultra-simples
     int frame_counter = 0;
@@ -182,12 +187,6 @@ void kernel_main() {
         if (keyboard_available()) {
             char key = read_keyboard();
             
-            // Mostra tecla
-            vga_set_color(VGA_LIGHT_GREEN | (VGA_BLACK << 4));
-            vga_puts("TECLA: [");
-            vga_putint(key);
-            vga_puts("] ");
-            
             // Converte para caractere se possível
             if (key >= 0x02 && key <= 0x0D) {
                 char ch = "1234567890-="[key - 0x02];
@@ -210,28 +209,54 @@ void kernel_main() {
             }
             else if (key == 0x1C) { // Enter
                 vga_putchar('\n');
+                vga_set_color(VGA_LIGHT_YELLOW | (VGA_BLACK << 4));
+                vga_puts("kernel> ");
+                vga_set_color(vga_color);
             }
             else if (key == 0x0E) { // Backspace
-                vga_puts("[BACKSPACE]");
+                if (vga_x > 0) {
+                    vga_x--;
+                    vga_putchar('\b');
+                    vga_putchar(' ');
+                    vga_putchar('\b');
+                }
             }
-            
-            vga_putchar('\n');
-            vga_set_color(vga_color);
-            
-            // Verifica se é 'q' para sair
-            if (key == 0x10) { // 'q'
-                vga_set_color(VGA_LIGHT_YELLOW | (VGA_BLACK << 4));
-                vga_puts("\nSaindo...\n");
-                break;
+            else if (key == 0x0F) { // Tab
+                vga_putchar('\t');
+            }
+            else if (key == 0x1A) { // [
+                vga_putchar('[');
+            }
+            else if (key == 0x1B) { // ]
+                vga_putchar(']');
+            }
+            else if (key == 0x27) { // ;
+                vga_putchar(';');
+            }
+            else if (key == 0x28) { // '
+                vga_putchar('\'');
+            }
+            else if (key == 0x33) { // ,
+                vga_putchar(',');
+            }
+            else if (key == 0x34) { // .
+                vga_putchar('.');
+            }
+            else if (key == 0x35) { // /
+                vga_putchar('/');
+            }
+            else if (key == 0x0B) { // 0
+                vga_putchar('0');
+            }
+            else if (key == 0x0C) { // -
+                vga_putchar('-');
+            }
+            else if (key == 0x0D) { // =
+                vga_putchar('=');
             }
         }
         
         // Pausa mínima
         for (volatile int i = 0; i < 1; i++) {}
-    }
-    
-    // Loop infinito após sair
-    while (1) {
-        for (volatile int i = 0; i < 1000; i++) {}
     }
 }
