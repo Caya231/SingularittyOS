@@ -223,26 +223,39 @@ static inline void outb(uint16_t port, uint8_t val) {
     __asm__ volatile("outb %0, %1" : : "a"(val), "Nd"(port));
 }
 
-// Função para verificar se há tecla disponível
+// Função para verificar se há tecla disponível (versão melhorada)
 int keyboard_available() {
-    return (inb(KEYBOARD_STATUS_PORT) & 0x01);
+    // Verifica se há dados disponíveis na porta 0x64
+    unsigned char status = inb(KEYBOARD_STATUS_PORT);
+    
+    // Bit 0 = Output buffer full (dados disponíveis)
+    // Bit 1 = Input buffer full (buffer de entrada cheio)
+    // Bit 2 = System flag
+    // Bit 3 = Command/data flag
+    // Bit 4 = Keyboard enabled
+    // Bit 5 = Transmit timeout
+    // Bit 6 = Receive timeout
+    // Bit 7 = Parity error
+    
+    // Retorna true se há dados para ler (bit 0 = 1)
+    return (status & 0x01) != 0;
 }
 
-// Função para ler tecla do teclado
+// Função para ler tecla do teclado (versão melhorada)
 char read_keyboard() {
     // Aguarda até que uma tecla esteja disponível
     while (!keyboard_available()) {
-        // Pausa mais longa para não sobrecarregar a CPU
-        for (volatile int i = 0; i < 10000; i++) {}
+        // Pausa muito pequena para não travar
+        for (volatile int i = 0; i < 100; i++) {}
     }
     
-    // Lê a tecla
-    char key = inb(KEYBOARD_DATA_PORT);
+    // Lê o scancode da tecla
+    char scancode = inb(KEYBOARD_DATA_PORT);
     
-    // Aguarda um pouco para estabilizar
-    for (volatile int i = 0; i < 5000; i++) {}
+    // Pausa mínima para estabilização
+    for (volatile int i = 0; i < 500; i++) {}
     
-    return key;
+    return scancode;
 }
 
 // Função para comparar strings
@@ -468,9 +481,11 @@ void run_shell() {
             key = inb(KEYBOARD_DATA_PORT);
             
             // Debug: mostra todas as teclas
+            vga_set_color(VGA_LIGHT_GREEN | (VGA_BLACK << 4));
             vga_puts("[");
             vga_putint(key);
             vga_puts("]");
+            vga_set_color(vga_color);
             
             // Processa tecla especial
             if (key == 0xE0) {
@@ -559,6 +574,27 @@ void run_shell() {
         
         // Pausa mínima para não travar
         for (volatile int i = 0; i < 10; i++) {}
+        
+        // Teste adicional: mostra status do teclado a cada 100 frames
+        if (frame_counter % 100 == 0) {
+            // Salva posição atual
+            int old_x = vga_x;
+            int old_y = vga_y;
+            
+            // Vai para canto superior esquerdo
+            vga_x = 0;
+            vga_y = 1;
+            
+            // Mostra status do teclado
+            vga_set_color(VGA_LIGHT_CYAN | (VGA_BLACK << 4));
+            vga_puts("KB:");
+            vga_putint(keyboard_available());
+            
+            // Restaura posição
+            vga_x = old_x;
+            vga_y = old_y;
+            vga_set_color(vga_color);
+        }
     }
 }
 
