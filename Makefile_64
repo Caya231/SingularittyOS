@@ -1,0 +1,73 @@
+# Makefile para o SingularittyOS 64-bit
+CC = gcc
+LD = ld
+CFLAGS = -Wall -Wextra -std=c99 -O2 -fno-pie -fno-stack-protector -m64 -nostdlib -fno-builtin -fno-pic -mno-red-zone -mcmodel=large
+LDFLAGS = -m elf_x86_64 -T kernel_64.ld
+
+# Arquivos
+KERNEL = kernel_64.bin
+ISO_DIR = iso_64
+GRUB_CFG = grub_64.cfg
+
+# Regra padrão
+all: $(KERNEL)
+
+# Compilar o kernel
+kernel_64.o: kernel_64.c
+	$(CC) $(CFLAGS) -c kernel_64.c -o kernel_64.o
+
+# Linkar o kernel
+$(KERNEL): kernel_64.o
+	$(LD) $(LDFLAGS) -o $(KERNEL) kernel_64.o
+
+# Criar ISO bootável para 64-bit
+iso: $(KERNEL)
+	mkdir -p $(ISO_DIR)/boot/grub
+	cp $(KERNEL) $(ISO_DIR)/boot/
+	cp $(GRUB_CFG) $(ISO_DIR)/boot/grub/
+	grub-mkrescue -o singularittyos-64.iso $(ISO_DIR)
+
+# Executar no QEMU 64-bit
+run: $(KERNEL)
+	qemu-system-x86_64 -kernel $(KERNEL) -display gtk -no-reboot -no-shutdown -enable-kvm -m 2G -usb -device usb-kbd
+
+# Executar no QEMU com console (mais confiável para teclado)
+run-console: $(KERNEL)
+	qemu-system-x86_64 -kernel $(KERNEL) -nographic -no-reboot -no-shutdown -m 2G -usb -device usb-kbd
+
+# Executar no QEMU sem KVM (pode resolver problemas de teclado)
+run-simple: $(KERNEL)
+	qemu-system-x86_64 -kernel $(KERNEL) -display gtk -no-reboot -no-shutdown -m 2G
+
+# Executar no QEMU com debug de interrupções
+run-debug: $(KERNEL)
+	qemu-system-x86_64 -kernel $(KERNEL) -display gtk -no-reboot -no-shutdown -enable-kvm -m 2G -d int -D qemu_64.log
+
+# Executar no QEMU com ISO
+run-iso: iso
+	qemu-system-x86_64 -cdrom singularittyos-64.iso
+
+# Limpar arquivos compilados
+clean:
+	rm -f *.o *.bin *.iso
+	rm -rf $(ISO_DIR)
+
+# Mostrar ajuda
+help:
+	@echo "Comandos disponíveis para SingularittyOS 64-bit:"
+	@echo "  make        - Compilar o kernel 64-bit"
+	@echo "  make iso    - Criar ISO bootável 64-bit"
+	@echo "  make run    - Executar kernel 64-bit no QEMU (GUI + USB keyboard)"
+	@echo "  make run-console - Executar kernel 64-bit no QEMU (console + USB keyboard)"
+	@echo "  make run-simple - Executar kernel 64-bit no QEMU (GUI sem KVM)"
+	@echo "  make run-debug - Executar kernel 64-bit no QEMU (com debug de interrupções)"
+	@echo "  make run-iso- Executar ISO 64-bit no QEMU"
+	@echo "  make clean  - Limpar arquivos compilados"
+	@echo "  make help   - Mostrar esta ajuda"
+	@echo ""
+	@echo "Requisitos:"
+	@echo "  - GCC com suporte a 64-bit"
+	@echo "  - GRUB tools (grub-mkrescue)"
+	@echo "  - QEMU 64-bit (qemu-system-x86_64)"
+
+.PHONY: all iso run run-iso clean help

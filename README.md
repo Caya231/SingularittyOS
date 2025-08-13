@@ -1,6 +1,6 @@
-# Kernel-V
+# SingularittyOS
 
-Um sistema operacional completo em C que exibe informações do sistema no estilo neofetch, com suporte ao GRUB como bootloader.
+Um sistema operacional completo em C que exibe informações do sistema no estilo neofetch, com suporte ao GRUB como bootloader e **suporte completo para 64-bit**.
 
 ## Características
 
@@ -9,8 +9,8 @@ Um sistema operacional completo em C que exibe informações do sistema no estil
 - **Multiboot**: Compatível com padrão Multiboot
 - **Sistema de Vídeo**: Driver VGA básico com cores
 - **Interface**: Exibição de informações no estilo neofetch
-- **Arquitetura**: x86 32-bit
-- **Emulação**: Suporte completo ao QEMU
+- **Arquitetura**: x86 32-bit e **x86_64 64-bit**
+- **Emulação**: Suporte completo ao QEMU (32-bit e 64-bit)
 
 ## Instalação de Dependências
 
@@ -37,6 +37,11 @@ make
 make -f Makefile_grub
 ```
 
+### Kernel 64-bit (Novo!):
+```bash
+make -f Makefile_64
+```
+
 ## Execução
 
 ### Kernel Original:
@@ -51,6 +56,13 @@ make run-debug    # Modo debug
 make -f Makefile_grub run    # Kernel direto
 make -f Makefile_grub iso    # Criar ISO bootável
 make -f Makefile_grub run-iso # Executar ISO
+```
+
+### Kernel 64-bit:
+```bash
+make -f Makefile_64 run      # Kernel direto
+make -f Makefile_64 iso      # Criar ISO bootável
+make -f Makefile_64 run-iso  # Executar ISO
 ```
 
 ## Comandos Make
@@ -70,6 +82,14 @@ make -f Makefile_grub run-iso # Executar ISO
 - `make -f Makefile_grub run-iso` - Executa ISO no QEMU
 - `make -f Makefile_grub clean` - Remove arquivos compilados
 - `make -f Makefile_grub help` - Mostra ajuda dos comandos
+
+### Kernel 64-bit:
+- `make -f Makefile_64` - Compila o kernel 64-bit
+- `make -f Makefile_64 run` - Executa kernel diretamente
+- `make -f Makefile_64 iso` - Cria ISO bootável
+- `make -f Makefile_64 run-iso` - Executa ISO no QEMU
+- `make -f Makefile_64 clean` - Remove arquivos compilados
+- `make -f Makefile_64 help` - Mostra ajuda dos comandos
 
 ## Requisitos
 
@@ -116,6 +136,14 @@ O sistema operacional funciona em camadas:
 5. **Interface** - Exibe informações do sistema
 6. **Sistema** - Loop principal do kernel
 
+### Kernel 64-bit:
+1. **GRUB** - Bootloader padrão da indústria
+2. **Multiboot** - Carrega o kernel na memória
+3. **Kernel 64-bit** - Inicializa o sistema em modo 64-bit
+4. **Driver VGA** - Gerencia a saída de vídeo (endereços 64-bit)
+5. **Interface** - Exibe informações do sistema com arquitetura x86_64
+6. **Sistema** - Loop principal do kernel com suporte a 64-bit
+
 ## Exemplo de Saída
 
 ```
@@ -123,16 +151,17 @@ O sistema operacional funciona em camadas:
 
                     Kernel-V@kernel-v
                    ---------------
-OS:                 Kernel-V x86_64
-Kernel:             1.0.0
+OS:                 SingularittyOS x86_64
+Kernel:             2.0.0
+Architecture:       x86_64
 Uptime:             0s
-Memory:             512MB
-Shell:              kernel-shell
+Memory:             2048MB
+Shell:              singularity-shell
 
 Sistema operacional carregado com sucesso!
 Digite 'help' para comandos disponíveis.
 
-kernel-v>
+singularitty>
 ```
 
 ## Licença
