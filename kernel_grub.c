@@ -223,19 +223,24 @@ static inline void outb(uint16_t port, uint8_t val) {
     __asm__ volatile("outb %0, %1" : : "a"(val), "Nd"(port));
 }
 
+// Função para verificar se há tecla disponível
+int keyboard_available() {
+    return (inb(KEYBOARD_STATUS_PORT) & 0x01);
+}
+
 // Função para ler tecla do teclado
 char read_keyboard() {
     // Aguarda até que uma tecla esteja disponível
-    while (!(inb(KEYBOARD_STATUS_PORT) & 0x01)) {
-        // Pequena pausa para não sobrecarregar a CPU
-        for (volatile int i = 0; i < 1000; i++) {}
+    while (!keyboard_available()) {
+        // Pausa mais longa para não sobrecarregar a CPU
+        for (volatile int i = 0; i < 10000; i++) {}
     }
     
     // Lê a tecla
     char key = inb(KEYBOARD_DATA_PORT);
     
     // Aguarda um pouco para estabilizar
-    for (volatile int i = 0; i < 1000; i++) {}
+    for (volatile int i = 0; i < 5000; i++) {}
     
     return key;
 }
@@ -277,6 +282,7 @@ void process_command(const char* command) {
         vga_puts("  info     - Mostra informações do sistema\n");
         vga_puts("  date     - Mostra data/hora (simulado)\n");
         vga_puts("  test     - Testa o teclado\n");
+        vga_puts("  debug    - Modo debug do teclado\n");
         vga_puts("  exit     - Reinicia o sistema\n");
         vga_puts("  reboot   - Reinicia o sistema\n");
     }
@@ -301,6 +307,33 @@ void process_command(const char* command) {
     else if (strcmp(command, "test") == 0) {
         vga_puts("Testando teclado... Digite algumas teclas:\n");
         vga_puts("Pressione qualquer tecla para testar (ESC para sair):\n");
+        vga_puts("Scancodes serão mostrados entre colchetes [XX]\n");
+        vga_set_color(VGA_LIGHT_YELLOW | (VGA_BLACK << 4));
+        vga_puts("kernel-v> ");
+    }
+    else if (strcmp(command, "debug") == 0) {
+        vga_puts("Modo debug ativado!\n");
+        vga_puts("Aguardando teclas... (pressione ESC para sair)\n");
+        
+        // Loop de debug
+        while (1) {
+            if (keyboard_available()) {
+                char debug_key = inb(KEYBOARD_DATA_PORT);
+                vga_puts("[");
+                vga_putint(debug_key);
+                vga_puts("]");
+                
+                // ESC para sair
+                if (debug_key == 0x01) {
+                    vga_puts("\nSaindo do modo debug...\n");
+                    break;
+                }
+            }
+            
+            // Pausa para não sobrecarregar
+            for (volatile int i = 0; i < 10000; i++) {}
+        }
+        
         vga_set_color(VGA_LIGHT_YELLOW | (VGA_BLACK << 4));
         vga_puts("kernel-v> ");
     }
@@ -425,6 +458,15 @@ void run_shell() {
         }
         else if (key == 0x35) { // /
             ch = '/';
+        }
+        else if (key == 0x0B) { // 0
+            ch = '0';
+        }
+        else if (key == 0x0C) { // -
+            ch = '-';
+        }
+        else if (key == 0x0D) { // =
+            ch = '=';
         }
         else {
             // Debug: mostra scancode não reconhecido
