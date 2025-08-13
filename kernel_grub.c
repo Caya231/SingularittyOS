@@ -438,13 +438,43 @@ void run_shell() {
     
     // Loop principal do shell - sistema fica estável aqui
     while (1) {
-        // Verifica se há tecla disponível (não bloqueia)
+        // Indicador visual de que o sistema está funcionando
+        static int frame_counter = 0;
+        frame_counter++;
+        
+        // Atualiza indicador a cada 50 frames (muito frequente)
+        if (frame_counter % 50 == 0) {
+            // Salva posição atual
+            int old_x = vga_x;
+            int old_y = vga_y;
+            
+            // Vai para canto superior direito
+            vga_x = VGA_WIDTH - 15;
+            vga_y = 0;
+            
+            // Mostra contador de frames
+            vga_set_color(VGA_LIGHT_RED | (VGA_BLACK << 4));
+            vga_puts("FRAME:");
+            vga_putint(frame_counter / 50);
+            
+            // Restaura posição
+            vga_x = old_x;
+            vga_y = old_y;
+            vga_set_color(vga_color);
+        }
+        
+        // Verifica teclado de forma não-bloqueante
         if (keyboard_available()) {
             key = inb(KEYBOARD_DATA_PORT);
             
+            // Debug: mostra todas as teclas
+            vga_puts("[");
+            vga_putint(key);
+            vga_puts("]");
+            
             // Processa tecla especial
             if (key == 0xE0) {
-                key = inb(KEYBOARD_DATA_PORT); // Lê código da tecla especial
+                key = inb(KEYBOARD_DATA_PORT);
                 continue;
             }
             
@@ -469,6 +499,8 @@ void run_shell() {
                 command_buffer[command_pos] = '\0';
                 process_command(command_buffer);
                 command_pos = 0;
+                vga_set_color(VGA_LIGHT_YELLOW | (VGA_BLACK << 4));
+                vga_puts("kernel-v> ");
                 continue;
             }
             else if (key == 0x0E) { // Backspace
@@ -514,10 +546,7 @@ void run_shell() {
                 ch = '=';
             }
             else {
-                // Debug: mostra scancode não reconhecido
-                vga_puts("[");
-                vga_putint(key);
-                vga_puts("]");
+                // Tecla não reconhecida, mas não trava
                 continue;
             }
             
@@ -528,33 +557,8 @@ void run_shell() {
             }
         }
         
-        // Indicador visual de que o sistema está funcionando
-        static int frame_counter = 0;
-        frame_counter++;
-        
-        // Atualiza indicador a cada 100 frames (mais frequente)
-        if (frame_counter % 100 == 0) {
-            // Salva posição atual
-            int old_x = vga_x;
-            int old_y = vga_y;
-            
-            // Vai para canto superior direito
-            vga_x = VGA_WIDTH - 15;
-            vga_y = 0;
-            
-            // Mostra contador de frames
-            vga_set_color(VGA_LIGHT_RED | (VGA_BLACK << 4));
-            vga_puts("FRAME:");
-            vga_putint(frame_counter / 100);
-            
-            // Restaura posição
-            vga_x = old_x;
-            vga_y = old_y;
-            vga_set_color(vga_color);
-        }
-        
-        // Pausa muito pequena para não travar
-        for (volatile int i = 0; i < 100; i++) {}
+        // Pausa mínima para não travar
+        for (volatile int i = 0; i < 10; i++) {}
     }
 }
 
