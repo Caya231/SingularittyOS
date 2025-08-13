@@ -426,94 +426,101 @@ void run_shell() {
     char key;
     char ch;
     
+    // Loop principal do shell - sistema fica estável aqui
     while (1) {
-        // Lê tecla do teclado
-        key = read_keyboard();
-        
-        // Processa tecla especial
-        if (key == 0xE0) {
-            key = read_keyboard(); // Lê código da tecla especial
-            continue;
-        }
-        
-        // Converte scancode para caractere
-        if (key >= 0x02 && key <= 0x0D) {
-            ch = "1234567890-="[key - 0x02];
-        }
-        else if (key >= 0x10 && key <= 0x1B) {
-            ch = "qwertyuiop[]"[key - 0x10];
-        }
-        else if (key >= 0x1E && key <= 0x28) {
-            ch = "asdfghjkl;'"[key - 0x1E];
-        }
-        else if (key >= 0x2C && key <= 0x35) {
-            ch = "zxcvbnm,./"[key - 0x2C];
-        }
-        else if (key == 0x39) {
-            ch = ' ';
-        }
-        else if (key == 0x1C) { // Enter
-            vga_putchar('\n');
-            command_buffer[command_pos] = '\0';
-            process_command(command_buffer);
-            command_pos = 0;
-            continue;
-        }
-        else if (key == 0x0E) { // Backspace
-            if (command_pos > 0) {
-                command_pos--;
-                vga_putchar('\b');
-                vga_putchar(' ');
-                vga_putchar('\b');
+        // Verifica se há tecla disponível (não bloqueia)
+        if (keyboard_available()) {
+            key = inb(KEYBOARD_DATA_PORT);
+            
+            // Processa tecla especial
+            if (key == 0xE0) {
+                key = inb(KEYBOARD_DATA_PORT); // Lê código da tecla especial
+                continue;
             }
-            continue;
-        }
-        else if (key == 0x0F) { // Tab
-            ch = '\t';
-        }
-        else if (key == 0x1A) { // [
-            ch = '[';
-        }
-        else if (key == 0x1B) { // ]
-            ch = ']';
-        }
-        else if (key == 0x27) { // ;
-            ch = ';';
-        }
-        else if (key == 0x28) { // '
-            ch = '\'';
-        }
-        else if (key == 0x33) { // ,
-            ch = ',';
-        }
-        else if (key == 0x34) { // .
-            ch = '.';
-        }
-        else if (key == 0x35) { // /
-            ch = '/';
-        }
-        else if (key == 0x0B) { // 0
-            ch = '0';
-        }
-        else if (key == 0x0C) { // -
-            ch = '-';
-        }
-        else if (key == 0x0D) { // =
-            ch = '=';
-        }
-        else {
-            // Debug: mostra scancode não reconhecido
-            vga_puts("[");
-            vga_putint(key);
-            vga_puts("]");
-            continue;
+            
+            // Converte scancode para caractere
+            if (key >= 0x02 && key <= 0x0D) {
+                ch = "1234567890-="[key - 0x02];
+            }
+            else if (key >= 0x10 && key <= 0x1B) {
+                ch = "qwertyuiop[]"[key - 0x10];
+            }
+            else if (key >= 0x1E && key <= 0x28) {
+                ch = "asdfghjkl;'"[key - 0x1E];
+            }
+            else if (key >= 0x2C && key <= 0x35) {
+                ch = "zxcvbnm,./"[key - 0x2C];
+            }
+            else if (key == 0x39) {
+                ch = ' ';
+            }
+            else if (key == 0x1C) { // Enter
+                vga_putchar('\n');
+                command_buffer[command_pos] = '\0';
+                process_command(command_buffer);
+                command_pos = 0;
+                continue;
+            }
+            else if (key == 0x0E) { // Backspace
+                if (command_pos > 0) {
+                    command_pos--;
+                    vga_putchar('\b');
+                    vga_putchar(' ');
+                    vga_putchar('\b');
+                }
+                continue;
+            }
+            else if (key == 0x0F) { // Tab
+                ch = '\t';
+            }
+            else if (key == 0x1A) { // [
+                ch = '[';
+            }
+            else if (key == 0x1B) { // ]
+                ch = ']';
+            }
+            else if (key == 0x27) { // ;
+                ch = ';';
+            }
+            else if (key == 0x28) { // '
+                ch = '\'';
+            }
+            else if (key == 0x33) { // ,
+                ch = ',';
+            }
+            else if (key == 0x34) { // .
+                ch = '.';
+            }
+            else if (key == 0x35) { // /
+                ch = '/';
+            }
+            else if (key == 0x0B) { // 0
+                ch = '0';
+            }
+            else if (key == 0x0C) { // -
+                ch = '-';
+            }
+            else if (key == 0x0D) { // =
+                ch = '=';
+            }
+            else {
+                // Debug: mostra scancode não reconhecido
+                vga_puts("[");
+                vga_putint(key);
+                vga_puts("]");
+                continue;
+            }
+            
+            // Adiciona caractere ao buffer e exibe na tela
+            if (command_pos < MAX_COMMAND_LENGTH - 1) {
+                command_buffer[command_pos++] = ch;
+                vga_putchar(ch);
+            }
         }
         
-        // Adiciona caractere ao buffer e exibe na tela
-        if (command_pos < MAX_COMMAND_LENGTH - 1) {
-            command_buffer[command_pos++] = ch;
-            vga_putchar(ch);
-        }
+        // Pausa pequena para não sobrecarregar a CPU
+        // Mas não bloqueia o sistema
+        for (volatile int i = 0; i < 1000; i++) {}
     }
 }
 
