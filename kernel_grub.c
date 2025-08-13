@@ -226,10 +226,18 @@ static inline void outb(uint16_t port, uint8_t val) {
 // Função para ler tecla do teclado
 char read_keyboard() {
     // Aguarda até que uma tecla esteja disponível
-    while (!(inb(KEYBOARD_STATUS_PORT) & 0x01));
+    while (!(inb(KEYBOARD_STATUS_PORT) & 0x01)) {
+        // Pequena pausa para não sobrecarregar a CPU
+        for (volatile int i = 0; i < 1000; i++) {}
+    }
     
     // Lê a tecla
-    return inb(KEYBOARD_DATA_PORT);
+    char key = inb(KEYBOARD_DATA_PORT);
+    
+    // Aguarda um pouco para estabilizar
+    for (volatile int i = 0; i < 1000; i++) {}
+    
+    return key;
 }
 
 // Função para comparar strings
@@ -268,6 +276,7 @@ void process_command(const char* command) {
         vga_puts("  clear    - Limpa a tela\n");
         vga_puts("  info     - Mostra informações do sistema\n");
         vga_puts("  date     - Mostra data/hora (simulado)\n");
+        vga_puts("  test     - Testa o teclado\n");
         vga_puts("  exit     - Reinicia o sistema\n");
         vga_puts("  reboot   - Reinicia o sistema\n");
     }
@@ -286,6 +295,12 @@ void process_command(const char* command) {
     }
     else if (strcmp(command, "date") == 0) {
         vga_puts("Data: 13/08/2025 - Hora: 04:00:00 (simulado)\n");
+        vga_set_color(VGA_LIGHT_YELLOW | (VGA_BLACK << 4));
+        vga_puts("kernel-v> ");
+    }
+    else if (strcmp(command, "test") == 0) {
+        vga_puts("Testando teclado... Digite algumas teclas:\n");
+        vga_puts("Pressione qualquer tecla para testar (ESC para sair):\n");
         vga_set_color(VGA_LIGHT_YELLOW | (VGA_BLACK << 4));
         vga_puts("kernel-v> ");
     }
@@ -387,8 +402,36 @@ void run_shell() {
             }
             continue;
         }
+        else if (key == 0x0F) { // Tab
+            ch = '\t';
+        }
+        else if (key == 0x1A) { // [
+            ch = '[';
+        }
+        else if (key == 0x1B) { // ]
+            ch = ']';
+        }
+        else if (key == 0x27) { // ;
+            ch = ';';
+        }
+        else if (key == 0x28) { // '
+            ch = '\'';
+        }
+        else if (key == 0x33) { // ,
+            ch = ',';
+        }
+        else if (key == 0x34) { // .
+            ch = '.';
+        }
+        else if (key == 0x35) { // /
+            ch = '/';
+        }
         else {
-            continue; // Tecla não reconhecida
+            // Debug: mostra scancode não reconhecido
+            vga_puts("[");
+            vga_putint(key);
+            vga_puts("]");
+            continue;
         }
         
         // Adiciona caractere ao buffer e exibe na tela
