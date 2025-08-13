@@ -1,0 +1,47 @@
+# Makefile para o Kernel Simples de Teste
+CC = gcc
+LD = ld
+CFLAGS = -Wall -Wextra -std=c99 -O2 -fno-pie -fno-stack-protector -m32 -nostdlib -fno-builtin -fno-pic -mno-red-zone
+LDFLAGS = -m elf_i386 -T kernel_simple.ld
+
+# Arquivos
+KERNEL = kernel_simple.bin
+
+# Regra padrão
+all: $(KERNEL)
+
+# Compilar o kernel
+kernel_simple.o: kernel_simple.c
+	$(CC) $(CFLAGS) -c kernel_simple.c -o kernel_simple.o
+
+# Linkar o kernel
+$(KERNEL): kernel_simple.o
+	$(LD) $(LDFLAGS) -o $(KERNEL) kernel_simple.o
+
+# Executar no QEMU
+run: $(KERNEL)
+	qemu-system-i386 -kernel $(KERNEL) -display gtk -no-reboot -no-shutdown -m 128M
+
+# Executar no QEMU com console
+run-console: $(KERNEL)
+	qemu-system-i386 -kernel $(KERNEL) -nographic -no-reboot -no-shutdown -m 128M
+
+# Executar no QEMU sem KVM
+run-simple: $(KERNEL)
+	qemu-system-i386 -kernel $(KERNEL) -display gtk -no-reboot -no-shutdown -m 128M
+
+# Limpar arquivos compilados
+clean:
+	rm -f *.o *.bin
+
+# Mostrar ajuda
+help:
+	@echo "Comandos disponíveis:"
+	@echo "  make        - Compilar o kernel simples"
+	@echo "  make run    - Executar kernel no QEMU (GUI)"
+	@echo "  make run-console - Executar kernel no QEMU (console)"
+	@echo "  make run-simple - Executar kernel no QEMU (sem KVM)"
+	@echo "  make clean  - Limpar arquivos compilados"
+	@echo "  make help   - Mostrar esta ajuda"
+
+.PHONY: all run run-console run-simple clean help
